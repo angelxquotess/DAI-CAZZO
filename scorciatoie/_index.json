@@ -1,0 +1,14 @@
+{
+  "shortcuts": {
+    "accendi_la_luce": {
+      "name": "accendi la luce",
+      "file": "scorciatoie/accendi_la_luce.py",
+      "action": {
+        "kind": "run_file",
+        "path": "C:\\Users\\windows\\Desktop\\alexa\\!accendi.bat"
+      },
+      "raw": "C:\\Users\\windows\\Desktop\\alexa\\!accendi.bat",
+      "created_at": "2026-06-09T22:54:21"
+    }
+  }
+}

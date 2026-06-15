@@ -1,0 +1,1 @@
+# scorciatoie generate da Jarvis
