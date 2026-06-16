@@ -923,6 +923,69 @@ def _run_gui_in_this_process(initial_text: str = "") -> int:
     plat_lay.addWidget(btn_scan)
     root.addWidget(plat_box)
 
+    # ---- WhatsApp ACTIONS (vocale + chiamata) ----
+    wa_actions = QGroupBox("[ WA ]  AZIONI WHATSAPP")
+    wa_lay = QHBoxLayout(wa_actions)
+    wa_target = QLineEdit()
+    wa_target.setPlaceholderText("destinatario WhatsApp (nome contatto o +39...)")
+    btn_rec_start = QPushButton("REC vocale"); btn_rec_start.setObjectName("primary")
+    btn_rec_stop  = QPushButton("STOP & INVIA"); btn_rec_stop.setEnabled(False)
+    btn_call_wa   = QPushButton("CHIAMA")
+    wa_lay.addWidget(wa_target, 1)
+    wa_lay.addWidget(btn_rec_start)
+    wa_lay.addWidget(btn_rec_stop)
+    wa_lay.addWidget(btn_call_wa)
+    root.addWidget(wa_actions)
+
+    _wa_rec_path = {"wav": None}
+
+    def _do_rec_start():
+        try:
+            from actions.voice_io import start_recording
+            ok, msg = start_recording()
+        except Exception as e:
+            ok, msg = False, f"voice_io non disponibile: {e}"
+        if ok:
+            btn_rec_start.setEnabled(False)
+            btn_rec_stop.setEnabled(True)
+            log_view.append("[WA-VOICE] " + msg)
+        else:
+            log_view.append("[WA-VOICE] " + msg)
+
+    def _do_rec_stop_and_send():
+        try:
+            from actions.voice_io import stop_recording_and_save_wav, send_recorded_voice_whatsapp
+        except Exception as e:
+            log_view.append(f"[WA-VOICE] modulo non disponibile: {e}"); return
+        btn_rec_stop.setEnabled(False)
+        wav = stop_recording_and_save_wav()
+        if not wav:
+            log_view.append("[WA-VOICE] registrazione vuota.")
+            btn_rec_start.setEnabled(True); return
+        recipient = wa_target.text().strip()
+        if not recipient:
+            log_view.append("[WA-VOICE] destinatario mancante.")
+            btn_rec_start.setEnabled(True); return
+        ok, info = send_recorded_voice_whatsapp(recipient, wav)
+        log_view.append(("[WA-VOICE] inviato a " + recipient) if ok
+                         else ("[WA-VOICE] errore: " + info[:120]))
+        btn_rec_start.setEnabled(True)
+
+    def _do_call_wa():
+        try:
+            from actions.calls import start_call
+        except Exception as e:
+            log_view.append(f"[WA-CALL] modulo non disponibile: {e}"); return
+        recipient = wa_target.text().strip()
+        if not recipient:
+            log_view.append("[WA-CALL] destinatario mancante."); return
+        out = start_call({"platform": "whatsapp", "receiver": recipient})
+        log_view.append("[WA-CALL] " + out)
+
+    btn_rec_start.clicked.connect(_do_rec_start)
+    btn_rec_stop.clicked.connect(_do_rec_stop_and_send)
+    btn_call_wa.clicked.connect(_do_call_wa)
+
     def _refresh_wa_status():
         st = _wa_status()
         if not st["online"]:
