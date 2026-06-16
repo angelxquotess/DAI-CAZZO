@@ -19,7 +19,12 @@ from actions.flight_finder     import flight_finder
 from actions.open_app          import open_app
 from actions.weather_report    import weather_action
 from actions.send_message      import send_message
-from actions.check_messages    import check_messages, start_notification_pollers
+from actions.check_messages    import (
+    check_messages, start_notification_pollers, read_last_notifications,
+)
+from actions.voice_io          import play_last_voice, record_whatsapp_voice
+from actions.ai_reply          import suggest_reply, reply_with_picked
+from actions.calls             import start_call
 from actions.reminder          import reminder
 from actions.computer_settings import computer_settings
 from actions.screen_processor  import screen_process
@@ -175,6 +180,92 @@ TOOL_DECLARATIONS = [
             "quando l'utente chiede se ci sono messaggi nuovi, da leggere, o non letti."
         ),
         "parameters": {"type": "OBJECT", "properties": {}, "required": []}
+    },
+    {
+        "name": "read_last_notifications",
+        "description": (
+            "Comando 'Jarvis leggimi le ultime N notifiche': legge ad alta voce il "
+            "CONTENUTO delle ultime notifiche memorizzate (testo o 'messaggio vocale')."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "count": {"type": "INTEGER", "description": "Quante notifiche leggere (default 5, max 50)"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "play_last_voice",
+        "description": (
+            "Comando 'Jarvis riproduci il vocale' / 'sì, riproducilo': riproduce "
+            "l'ultimo messaggio vocale ricevuto (qualunque piattaforma). Usa ffmpeg "
+            "se installato, altrimenti playsound. Opzionale: filtrare per piattaforma."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "platform": {"type": "STRING", "description": "whatsapp | telegram | discord | instagram (opzionale)"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "record_whatsapp_voice",
+        "description": (
+            "Comando 'Jarvis registra un vocale per <X>' SOLO SU WHATSAPP. Registra "
+            "dal microfono per N secondi (default 8) e invia il vocale al "
+            "destinatario tramite il bridge whatsapp-web.js."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "receiver": {"type": "STRING", "description": "Nome contatto o numero WhatsApp"},
+                "seconds":  {"type": "NUMBER", "description": "Durata registrazione in secondi (1-60, default 8)"},
+            },
+            "required": ["receiver"]
+        }
+    },
+    {
+        "name": "suggest_reply",
+        "description": (
+            "Comando 'Jarvis suggeriscimi una risposta': genera 3 risposte AI brevi "
+            "all'ultimo messaggio ricevuto e le legge ad alta voce. Dopo, l'utente "
+            "puo' dire 'rispondi cosi'' per la prima o 'rispondi con la seconda/terza'."
+        ),
+        "parameters": {"type": "OBJECT", "properties": {}, "required": []}
+    },
+    {
+        "name": "reply_with_picked",
+        "description": (
+            "Comando 'Jarvis rispondi cosi'' / 'rispondi con la seconda/terza': "
+            "invia all'ULTIMO mittente sulla stessa piattaforma la risposta AI scelta. "
+            "Da chiamare SOLO dopo suggest_reply."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "pick": {"type": "STRING", "description": "prima | seconda | terza (default: prima)"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "start_call",
+        "description": (
+            "Comando 'Jarvis chiama <X> su <piattaforma>': avvia una chiamata vocale "
+            "su WhatsApp, Telegram o Discord. Se l'app non e' aperta la apre e "
+            "ASPETTA fino a 15 secondi che la finestra compaia prima di avviare la "
+            "chiamata. WhatsApp accetta sia nome contatto sia numero +39..."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "platform": {"type": "STRING", "description": "whatsapp | telegram | discord"},
+                "receiver": {"type": "STRING", "description": "Nome contatto, @username o numero"},
+            },
+            "required": ["receiver"]
+        }
     },
     {
         "name": "reminder",
@@ -907,6 +998,30 @@ class JarvisLive:
             elif name == "check_messages":
                 r = await loop.run_in_executor(None, lambda: check_messages(parameters=args, response=None, player=self.ui, session_memory=None))
                 result = r or "Nessun messaggio non letto."
+
+            elif name == "read_last_notifications":
+                r = await loop.run_in_executor(None, lambda: read_last_notifications(parameters=args, response=None, player=self.ui, session_memory=None))
+                result = r or "Nessuna notifica recente."
+
+            elif name == "play_last_voice":
+                r = await loop.run_in_executor(None, lambda: play_last_voice(parameters=args, response=None, player=self.ui, session_memory=None))
+                result = r or "Riproduzione vocale eseguita."
+
+            elif name == "record_whatsapp_voice":
+                r = await loop.run_in_executor(None, lambda: record_whatsapp_voice(parameters=args, response=None, player=self.ui, session_memory=None))
+                result = r or "Vocale WhatsApp inviato."
+
+            elif name == "suggest_reply":
+                r = await loop.run_in_executor(None, lambda: suggest_reply(parameters=args, response=None, player=self.ui, session_memory=None))
+                result = r or "Non sono riuscito a suggerire risposte."
+
+            elif name == "reply_with_picked":
+                r = await loop.run_in_executor(None, lambda: reply_with_picked(parameters=args, response=None, player=self.ui, session_memory=None))
+                result = r or "Risposta inviata."
+
+            elif name == "start_call":
+                r = await loop.run_in_executor(None, lambda: start_call(parameters=args, response=None, player=self.ui, session_memory=None))
+                result = r or "Chiamata avviata."
 
             elif name == "reminder":
                 r = await loop.run_in_executor(None, lambda: reminder(parameters=args, response=None, player=self.ui))
